@@ -11,7 +11,7 @@ from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal
 from PyQt6.QtGui import QPainterPath
 
 from database import DatabaseManager, BASE_DIR
-from client import start_client
+from client import ClientThread
 
 class CustomMessageBox(QWidget):
     def __init__(self, parent=None):
@@ -294,10 +294,14 @@ class MainWindow(BaseWindow):
         self.db_manager = db_manager
         self.current_user = current_user
         self.current_chat_partner = None
-
+        
+        # ایجاد کلاینت برای ارتباط با سرور
+        self.client_thread = ClientThread(current_user["username"])
+        #self.client_thread.message_received.connect(self.display_message)
+        self.client_thread.start_client()
+        
         self.init_ui()
         self.load_contacts()
-        #start_client(current_user["username"])
 
     def init_ui(self):
         self.setWindowTitle(f"مسنجر - خوش آمدید {self.current_user['username']}")
@@ -764,11 +768,23 @@ class MainWindow(BaseWindow):
         """
         Opens the chat window for the selected contact.
         """
+        self.clear_chat_messages()
         self.current_chat_partner = contact_data
         self.chat_partner_label.setText(f"چت با {contact_data['username']}")
         self.right_panel.setCurrentIndex(1)
         self.load_chat_history()
 
+    def clear_chat_messages(self):
+        for i in reversed(range(self.message_content_layout.count())):
+            item = self.message_content_layout.itemAt(i)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                for j in reversed(range(item.layout().count())):
+                    sub_item = item.layout().itemAt(j)
+                    if sub_item.widget():
+                        sub_item.widget().deleteLater()
+                item.layout().deleteLater()
     def load_chat_history(self):
         for i in reversed(range(self.message_content_layout.count())):
             widget_to_remove = self.message_content_layout.itemAt(i).widget()
@@ -839,7 +855,6 @@ class MainWindow(BaseWindow):
             timestamp_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.message_content_layout.addWidget(timestamp_label)
 
-
     def send_message(self):
         message_text = self.message_input.text().strip()
         if not message_text:
@@ -849,20 +864,24 @@ class MainWindow(BaseWindow):
             self.show_message("لطفاً یک مخاطب برای چت انتخاب کنید.")
             return
 
+        # ارسال پیام به سرور
+        self.client_thread.send_message(message_text)
+        
+        # ذخیره پیام در دیتابیس
         sender_id = self.current_user['id']
         receiver_id = self.current_chat_partner['id']
-
         success = self.db_manager.save_message(sender_id, receiver_id, message_text)
+        
         if success:
             self.display_message(message_text, True, "اکنون")
             self.message_input.clear()
-            self.message_display_area.verticalScrollBar().setValue(
-                self.message_display_area.verticalScrollBar().maximum()
-            )
-            print(f"Message sent and saved: {message_text}")
         else:
             self.show_message("خطا در ارسال پیام.")
 
+    def closeEvent(self, event):
+        # توقف کلاینت هنگام بسته شدن پنجره
+        self.client_thread.stop_client()
+        event.accept()
 
 class MessengerApp(QApplication):
     def __init__(self, sys_argv):
