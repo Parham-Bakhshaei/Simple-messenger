@@ -1,3 +1,4 @@
+from datetime import datetime
 import sys
 import os
 import shutil
@@ -297,8 +298,8 @@ class MainWindow(BaseWindow):
         
         # ایجاد کلاینت برای ارتباط با سرور
         self.client_thread = ClientThread(current_user["username"])
-        #self.client_thread.message_received.connect(self.display_message)
-        self.client_thread.start_client()
+        self.client_thread.message_received.connect(self.handle_received_message)
+        self.client_thread.start()
         
         self.init_ui()
         self.load_contacts()
@@ -855,29 +856,41 @@ class MainWindow(BaseWindow):
             timestamp_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.message_content_layout.addWidget(timestamp_label)
 
-    def send_message(self):
-        message_text = self.message_input.text().strip()
-        if not message_text:
-            return
-
-        if not self.current_chat_partner:
-            self.show_message("لطفاً یک مخاطب برای چت انتخاب کنید.")
-            return
-
-        # ارسال پیام به سرور
-        self.client_thread.send_message(message_text)
+    def handle_received_message(self, message_data):
+        # بررسی آیا پیام مربوط به چت فعلی است
+        if (self.current_chat_partner and 
+            ((message_data['sender'] == self.current_chat_partner['username'] and 
+              message_data['receiver'] == self.current_user['username']) or
+             (message_data['sender'] == self.current_user['username'] and 
+              message_data['receiver'] == self.current_chat_partner['username']))):
+            
+            is_sender = (message_data['sender'] == self.current_user['username'])
+            self.display_message(message_data['message'], is_sender, message_data['timestamp'])
         
         # ذخیره پیام در دیتابیس
-        sender_id = self.current_user['id']
-        receiver_id = self.current_chat_partner['id']
-        success = self.db_manager.save_message(sender_id, receiver_id, message_text)
+        sender_info = self.db_manager.get_user_info(username=message_data['sender'])
+        receiver_info = self.db_manager.get_user_info(username=message_data['receiver'])
         
-        if success:
-            self.display_message(message_text, True, "اکنون")
-            self.message_input.clear()
-        else:
-            self.show_message("خطا در ارسال پیام.")
+        if sender_info and receiver_info:
+            self.db_manager.save_message(
+                sender_info['id'],
+                receiver_info['id'],
+                message_data['message'],
+                message_data['timestamp']
+            )
 
+    def send_message(self):
+        message_text = self.message_input.text().strip()
+        if not message_text or not self.current_chat_partner:
+            return
+        
+        # فقط یک بار پیام را نمایش دهید (قبل از ارسال به سرور)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.message_input.clear()
+        
+        # ارسال پیام به سرور
+        self.client_thread.send_message(message_text, self.current_chat_partner['username'])
+        
     def closeEvent(self, event):
         # توقف کلاینت هنگام بسته شدن پنجره
         self.client_thread.stop_client()

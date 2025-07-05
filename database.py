@@ -178,20 +178,25 @@ class DatabaseManager:
             print(f"Error updating user info: {e}")
             return False, f"خطا در به روز رسانی اطلاعات: {e}" # Error updating information
 
-    def save_message(self, sender_id, receiver_id, message_text):
-        """
-        Saves a chat message to the database.
-        """
+    def save_message(self, sender_id, receiver_id, message_text, timestamp=None):
         try:
-            self.cursor.execute("INSERT INTO messages (sender_id, receiver_id, message_text) VALUES (?, ?, ?)",
-                                (sender_id, receiver_id, message_text))
+            if timestamp:
+                self.cursor.execute('''
+                    INSERT INTO messages (sender_id, receiver_id, message_text, timestamp)
+                    VALUES (?, ?, ?, ?)
+                ''', (sender_id, receiver_id, message_text, timestamp))
+            else:
+                self.cursor.execute('''
+                    INSERT INTO messages (sender_id, receiver_id, message_text)
+                    VALUES (?, ?, ?)
+                ''', (sender_id, receiver_id, message_text))
             self.conn.commit()
-            print(f"Message from {sender_id} to {receiver_id} saved.")
             return True
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"Error saving message: {e}")
             return False
-
+        
+        
     def get_messages(self, user1_id, user2_id):
         """
         Retrieves all messages between two users, ordered by timestamp.
