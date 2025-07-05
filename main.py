@@ -297,7 +297,7 @@ class MainWindow(BaseWindow):
 
         self.init_ui()
         self.load_contacts()
-        start_client()
+        #start_client(current_user["username"])
 
     def init_ui(self):
         self.setWindowTitle(f"مسنجر - خوش آمدید {self.current_user['username']}")
@@ -867,7 +867,7 @@ class MainWindow(BaseWindow):
 class MessengerApp(QApplication):
     def __init__(self, sys_argv):
         super().__init__(sys_argv)
-        self.db_manager = DatabaseManager() # Initialize database manager
+        self.db_manager = DatabaseManager()  # Initialize database manager
         self.setup_ui()
 
     def setup_ui(self):
@@ -881,19 +881,25 @@ class MessengerApp(QApplication):
         self.stacked_widget.addWidget(self.sign_in_window)
         self.stacked_widget.addWidget(self.sign_up_window)
 
+        # Connect the signal to the slot
         self.sign_in_window.signed_in.connect(self.show_main_window)
 
         self.stacked_widget.show()
-
     def show_main_window(self, user_data):
-        if hasattr(self, 'main_window') and self.stacked_widget.indexOf(self.main_window) != -1:
-             self.stacked_widget.removeWidget(self.main_window)
+        # اگر ویجت اصلی از قبل وجود دارد، آن را پاک کنید
+        if hasattr(self, 'main_window'):
+            self.main_window.deleteLater()
 
+        # ایجاد ویجت اصلی جدید
         self.main_window = MainWindow(self.stacked_widget, self.db_manager, user_data)
+        
+        # افزودن ویجت به QStackedWidget و نمایش آن
         self.stacked_widget.addWidget(self.main_window)
         self.stacked_widget.setCurrentWidget(self.main_window)
+        
+        # تنظیم اندازه پنجره برای صفحه اصلی
         self.stacked_widget.setMinimumSize(900, 600)
-
+        self.stacked_widget.resize(900, 600)  # تنظیم اندازه اولیه
     def shutdown(self):
         self.db_manager.close()
         print("Application shutting down. Database connection closed.")
