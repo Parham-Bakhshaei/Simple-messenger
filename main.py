@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QPixmap, QFont, QPainter, QBrush, QColor, QPalette
 from PyQt6.QtCore import Qt, QSize, QThread, pyqtSignal
 from PyQt6.QtGui import QPainterPath
+from PyQt6.QtGui import QIcon
 
 from database import DatabaseManager, BASE_DIR
 from client import ClientThread
@@ -332,37 +333,42 @@ class MainWindow(BaseWindow):
         user_profile_layout.addWidget(user_name_label)
         user_profile_layout.addStretch()
 
-        settings_button = QPushButton("تنظیمات")
-        settings_button.setFixedSize(30, 30)
+        symbol_font = QFont("Segoe UI Symbol", 12)  # برای ویندوز
+        # یا
+        symbol_font = QFont("Arial Unicode MS", 12)  # گزینه جایگزین
+
+        settings_button = QPushButton("⚙")  # نماد چرخ دنده
+        settings_button.setFont(symbol_font)
+        settings_button.setFixedSize(60, 60)
         settings_button.setStyleSheet("""
             QPushButton {
-                background-color: #bd93f9; /* Purple */
+                background-color: #bd93f9;
                 border-radius: 15px;
-                font-size: 10px;
                 color: #282a36;
+                font-size: 8px;
             }
             QPushButton:hover {
-                background-color: #ff79c6; /* Pink */
+                background-color: #ff79c6;
             }
         """)
-        settings_button.setText("⚙")
         settings_button.clicked.connect(self.show_settings_panel)
         user_profile_layout.addWidget(settings_button)
 
-        add_contact_button = QPushButton("افزودن")
-        add_contact_button.setFixedSize(30, 30)
+
+        add_contact_button = QPushButton("➕")  # نماد بعلاوه
+        add_contact_button.setFont(symbol_font)
+        add_contact_button.setFixedSize(60, 60)
         add_contact_button.setStyleSheet("""
             QPushButton {
-                background-color: #ffb86c; /* Orange */
+                background-color: #ffb86c;
                 border-radius: 15px;
-                font-size: 10px;
                 color: #282a36;
+                font-size:8px;
             }
             QPushButton:hover {
                 background-color: #ff9248;
             }
         """)
-        add_contact_button.setText("➕")
         add_contact_button.clicked.connect(self.show_add_contact_panel)
         user_profile_layout.addWidget(add_contact_button)
 
@@ -421,7 +427,7 @@ class MainWindow(BaseWindow):
         message_input_layout.addWidget(self.message_input)
 
         send_button = QPushButton("ارسال")
-        send_button.setFixedSize(80, 40)
+        send_button.setFixedSize(100, 40)
         send_button.clicked.connect(self.send_message)
         message_input_layout.addWidget(send_button)
         self.chat_layout.addLayout(message_input_layout)
