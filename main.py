@@ -314,7 +314,7 @@ class MainWindow(BaseWindow):
         main_layout.setSpacing(0)
 
         left_panel = QFrame()
-        left_panel.setFixedWidth(250)
+        left_panel.setFixedWidth(350)
         left_panel.setStyleSheet("background-color: #383a59; border-right: 1px solid #44475a;")
         left_panel_layout = QVBoxLayout(left_panel)
         left_panel_layout.setContentsMargins(10, 10, 10, 10)
@@ -649,25 +649,34 @@ class MainWindow(BaseWindow):
 
 
     def load_contacts(self):
+        # پاک کردن لیست مخاطبان فعلی
         for i in reversed(range(self.contacts_list_layout.count())):
             widget_to_remove = self.contacts_list_layout.itemAt(i).widget()
             if widget_to_remove:
                 widget_to_remove.setParent(None)
-        all_users = []
-        try:
-            self.db_manager.cursor.execute("SELECT id, username, profile_pic_path FROM users WHERE id != ?", (self.current_user['id'],))
-            all_users = [{"id": row[0], "username": row[1], "profile_pic_path": row[2]} for row in self.db_manager.cursor.fetchall()]
-        except Exception as e:
-            print(f"Error fetching all users for contacts: {e}")
 
-        if not all_users:
-            no_contacts_label = QLabel("مخاطبی یافت نشد.")
+        # دریافت لیست مخاطبان از دیتابیس (بر اساس پیام‌های ارسال شده یا دریافت شده)
+        contacts = []
+        try:
+            # دریافت تمام کاربرانی که با کاربر جاری چت داشته‌اند
+            self.db_manager.cursor.execute("""
+                SELECT DISTINCT u.id, u.username, u.profile_pic_path 
+                FROM users u
+                JOIN messages m ON (u.id = m.sender_id OR u.id = m.receiver_id)
+                WHERE (m.sender_id = ? OR m.receiver_id = ?) AND u.id != ?
+            """, (self.current_user['id'], self.current_user['id'], self.current_user['id']))
+            contacts = [{"id": row[0], "username": row[1], "profile_pic_path": row[2]} for row in self.db_manager.cursor.fetchall()]
+        except Exception as e:
+            print(f"Error fetching contacts: {e}")
+
+        if not contacts:
+            no_contacts_label = QLabel("مخاطبی یافت نشد. برای افزودن مخاطب جدید از دکمه (+) استفاده کنید.")
             no_contacts_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             no_contacts_label.setStyleSheet("color: #6272a4; padding: 20px;")
             self.contacts_list_layout.addWidget(no_contacts_label)
             return
 
-        for contact_data in all_users:
+        for contact_data in contacts:
             self.add_contact_item_to_list(contact_data)
 
     def add_contact_item_to_list(self, contact_data):
