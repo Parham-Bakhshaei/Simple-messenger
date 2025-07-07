@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 import sys
 import os
 import shutil
@@ -261,7 +262,7 @@ class SignUpWindow(BaseWindow):
         main_layout.addWidget(go_to_signin_button)
 
         self.setLayout(main_layout)
-
+        
     def handle_sign_up(self):
         phone = self.phone_input.text().strip()
         username = self.username_input.text().strip()
@@ -270,6 +271,11 @@ class SignUpWindow(BaseWindow):
 
         if not (phone and username and password and confirm_password):
             self.show_message("لطفاً تمام فیلدها را پر کنید.")
+            return
+
+        # بررسی فرمت شماره تلفن
+        if not re.fullmatch(r"^09\d{9}$", phone):
+            self.show_message("شماره ی وارد شده معتبر نیست.")
             return
 
         if password != confirm_password:
@@ -296,7 +302,7 @@ class MainWindow(BaseWindow):
         self.db_manager = db_manager
         self.current_user = current_user
         self.current_chat_partner = None
-        
+        self.displayed_message_ids = set()
         # ایجاد کلاینت برای ارتباط با سرور
         self.client_thread = ClientThread(current_user["username"])
         self.client_thread.message_received.connect(self.handle_received_message)
@@ -304,6 +310,9 @@ class MainWindow(BaseWindow):
         
         self.init_ui()
         self.load_contacts()
+
+        self.no_contacts_label = None
+        self.no_messages_label = None
 
     def init_ui(self):
         self.setWindowTitle(f"مسنجر - خوش آمدید {self.current_user['username']}")
@@ -314,7 +323,7 @@ class MainWindow(BaseWindow):
         main_layout.setSpacing(0)
 
         left_panel = QFrame()
-        left_panel.setFixedWidth(350)
+        left_panel.setFixedWidth(400)
         left_panel.setStyleSheet("background-color: #383a59; border-right: 1px solid #44475a;")
         left_panel_layout = QVBoxLayout(left_panel)
         left_panel_layout.setContentsMargins(10, 10, 10, 10)
@@ -669,12 +678,12 @@ class MainWindow(BaseWindow):
         except Exception as e:
             print(f"Error fetching contacts: {e}")
 
-        if not contacts:
-            no_contacts_label = QLabel("مخاطبی یافت نشد. برای افزودن مخاطب جدید از دکمه (+) استفاده کنید.")
-            no_contacts_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            no_contacts_label.setStyleSheet("color: #6272a4; padding: 20px;")
-            self.contacts_list_layout.addWidget(no_contacts_label)
-            return
+        # if not contacts:
+        #     no_contacts_label = QLabel("مخاطبی وجود ندارد")
+        #     no_contacts_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        #     no_contacts_label.setStyleSheet("color: #6272a4; padding: 20px;")
+        #     self.contacts_list_layout.addWidget(no_contacts_label)
+        #     return
 
         for contact_data in contacts:
             self.add_contact_item_to_list(contact_data)
@@ -737,33 +746,41 @@ class MainWindow(BaseWindow):
         username = self.add_contact_username_input.text().strip()
         phone = self.add_contact_phone_input.text().strip()
 
-        if not username and not phone:
-            self.show_message("لطفاً نام کاربری یا شماره تلفن مخاطب را وارد کنید.")
+        if not username or not phone:
+            self.show_message("لطفاً هم نام کاربری و هم شماره تلفن مخاطب را وارد کنید.")
             return
 
-        contact_info = None
-        if username:
-            contact_info = self.db_manager.get_user_info(username=username)
-        if not contact_info and phone:
-            contact_info = self.db_manager.get_user_info(phone=phone)
+        # بررسی اینکه شماره تلفن مربوط به همان نام کاربری است
+        contact_info = self.db_manager.get_user_info(username=username)
 
-        if contact_info and contact_info['id'] != self.current_user['id']:
-            for i in range(self.contacts_list_layout.count()):
-                item_widget = self.contacts_list_layout.itemAt(i).widget()
-                if item_widget and hasattr(item_widget, 'contact_data') and item_widget.contact_data['id'] == contact_info['id']:
-                    self.show_message("این مخاطب قبلاً اضافه شده است.")
-                    self.add_contact_username_input.clear()
-                    self.add_contact_phone_input.clear()
-                    self.right_panel.setCurrentIndex(0)
-                    return
+        if not contact_info:
+            self.show_message("نام کاربری یافت نشد.")
+            return
 
-            self.add_contact_item_to_list(contact_info)
-            self.show_message(f"مخاطب '{contact_info['username']}' با موفقیت اضافه شد.")
-            self.add_contact_username_input.clear()
-            self.add_contact_phone_input.clear()
-            self.right_panel.setCurrentIndex(0)
-        else:
-            self.show_message("مخاطب یافت نشد یا شما نمی‌توانید خودتان را اضافه کنید.")
+        if contact_info['phone'] != phone:
+            self.show_message("شماره تلفن وارد شده با نام کاربری مطابقت ندارد.")
+            return
+
+        if contact_info['id'] == self.current_user['id']:
+            self.show_message("نمی‌توانید خودتان را به عنوان مخاطب اضافه کنید.")
+            return
+
+        # بررسی اینکه مخاطب تکراری نباشد
+        for i in range(self.contacts_list_layout.count()):
+            item_widget = self.contacts_list_layout.itemAt(i).widget()
+            if item_widget and hasattr(item_widget, 'contact_data') and item_widget.contact_data['id'] == contact_info['id']:
+                self.show_message("این مخاطب قبلاً اضافه شده است.")
+                self.add_contact_username_input.clear()
+                self.add_contact_phone_input.clear()
+                self.right_panel.setCurrentIndex(0)
+                return
+
+        self.add_contact_item_to_list(contact_info)
+        self.show_message(f"مخاطب '{contact_info['username']}' با موفقیت اضافه شد.")
+        self.add_contact_username_input.clear()
+        self.add_contact_phone_input.clear()
+        self.right_panel.setCurrentIndex(0)
+
     def show_add_contact_panel(self):
         self.right_panel.setCurrentIndex(2)
 
@@ -801,11 +818,11 @@ class MainWindow(BaseWindow):
                     if sub_item.widget():
                         sub_item.widget().deleteLater()
                 item.layout().deleteLater()
+
+
     def load_chat_history(self):
-        for i in reversed(range(self.message_content_layout.count())):
-            widget_to_remove = self.message_content_layout.itemAt(i).widget()
-            if widget_to_remove:
-                widget_to_remove.setParent(None)
+        self.displayed_message_ids.clear()
+        self.clear_chat_messages()
 
         if not self.current_chat_partner:
             return
@@ -813,22 +830,25 @@ class MainWindow(BaseWindow):
         messages = self.db_manager.get_messages(self.current_user['id'], self.current_chat_partner['id'])
 
         if not messages:
-            no_messages_label = QLabel("هنوز پیامی در این چت وجود ندارد.")
-            no_messages_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            no_messages_label.setStyleSheet("color: #6272a4; padding: 20px;")
-            self.message_content_layout.addWidget(no_messages_label)
-            return
-
-        for msg in messages:
-            is_sender = (msg['sender_id'] == self.current_user['id'])
-            self.display_message(msg['message_text'], is_sender, msg['timestamp'])
+            self.no_messages_label = QLabel("هنوز پیامی در این چت وجود ندارد.")
+            self.no_messages_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.no_messages_label.setStyleSheet("color: #6272a4; padding: 20px;")
+            self.message_content_layout.addWidget(self.no_messages_label)
+        else:
+            for msg in messages:
+                is_sender = (msg['sender_id'] == self.current_user['id'])
+                self.display_message(msg['message_text'], is_sender, msg['timestamp'])
 
         self.message_display_area.verticalScrollBar().rangeChanged.connect(
-            lambda min_val, max_val: self.message_display_area.verticalScrollBar().setValue(max_val)
-        )
+            lambda min_val, max_val: self.message_display_area.verticalScrollBar().setValue(max_val))
 
 
     def display_message(self, message_text, is_sender, timestamp):
+        message_id = f"{message_text}-{timestamp}"
+        if message_id in self.displayed_message_ids:
+            return  # پیام تکراری است
+
+        self.displayed_message_ids.add(message_id)
         message_bubble = QLabel(message_text)
         message_bubble.setWordWrap(True)
         message_bubble.setFont(QFont("Inter", 11))
@@ -871,41 +891,55 @@ class MainWindow(BaseWindow):
             timestamp_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.message_content_layout.addWidget(timestamp_label)
 
+
     def handle_received_message(self, message_data):
-        # بررسی آیا پیام مربوط به چت فعلی است
-        if (self.current_chat_partner and 
-            ((message_data['sender'] == self.current_chat_partner['username'] and 
-              message_data['receiver'] == self.current_user['username']) or
-             (message_data['sender'] == self.current_user['username'] and 
-              message_data['receiver'] == self.current_chat_partner['username']))):
-            
-            is_sender = (message_data['sender'] == self.current_user['username'])
-            self.display_message(message_data['message'], is_sender, message_data['timestamp'])
-        
-        # ذخیره پیام در دیتابیس
+        # ذخیره پیام در دیتابیس (فقط یک بار)
         sender_info = self.db_manager.get_user_info(username=message_data['sender'])
         receiver_info = self.db_manager.get_user_info(username=message_data['receiver'])
         
         if sender_info and receiver_info:
-            self.db_manager.save_message(
+            # بررسی وجود پیام در دیتابیس قبل از ذخیره
+            if not self.db_manager.message_exists(
                 sender_info['id'],
                 receiver_info['id'],
                 message_data['message'],
                 message_data['timestamp']
-            )
+            ):
+                self.db_manager.save_message(
+                    sender_info['id'],
+                    receiver_info['id'],
+                    message_data['message'],
+                    message_data['timestamp']
+                )
+
+        # فقط اگر در چت مربوطه هستیم پیام را نمایش دهیم
+        if (self.current_chat_partner and 
+            ((message_data['sender'] == self.current_chat_partner['username'] and 
+            message_data['receiver'] == self.current_user['username']) or
+            (message_data['sender'] == self.current_user['username'] and 
+            message_data['receiver'] == self.current_chat_partner['username']))):
+            
+            is_sender = (message_data['sender'] == self.current_user['username'])
+            self.display_message(message_data['message'], is_sender, message_data['timestamp'])
 
     def send_message(self):
         message_text = self.message_input.text().strip()
         if not message_text or not self.current_chat_partner:
             return
         
-        # فقط یک بار پیام را نمایش دهید (قبل از ارسال به سرور)
+        # حذف پیام "هنوز پیامی وجود ندارد" اگر نمایش داده می‌شود
+        if self.no_messages_label:
+            self.no_messages_label.deleteLater()
+            self.no_messages_label = None
+
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.message_input.clear()
         
         # ارسال پیام به سرور
         self.client_thread.send_message(message_text, self.current_chat_partner['username'])
         
+
+
     def closeEvent(self, event):
         # توقف کلاینت هنگام بسته شدن پنجره
         self.client_thread.stop_client()

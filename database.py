@@ -67,6 +67,15 @@ class DatabaseManager:
         except sqlite3.Error as e:
             print(f"Error creating tables: {e}")
 
+    def message_exists(self, sender_id, receiver_id, message_text, timestamp):
+        self.cursor.execute("""
+            SELECT 1 FROM messages 
+            WHERE sender_id = ? AND receiver_id = ? 
+            AND message_text = ? AND timestamp = ?
+        """, (sender_id, receiver_id, message_text, timestamp))
+        return self.cursor.fetchone() is not None
+
+
     def register_user(self, username, password, phone):
         """
         Registers a new user in the database.
