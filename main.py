@@ -273,7 +273,7 @@ class SignUpWindow(BaseWindow):
             self.show_message("لطفاً تمام فیلدها را پر کنید.")
             return
 
-        # بررسی فرمت شماره تلفن
+
         if not re.fullmatch(r"^09\d{9}$", phone):
             self.show_message("شماره ی وارد شده معتبر نیست.")
             return
@@ -303,7 +303,7 @@ class MainWindow(BaseWindow):
         self.current_user = current_user
         self.current_chat_partner = None
         self.displayed_message_ids = set()
-        # ایجاد کلاینت برای ارتباط با سرور
+
         self.client_thread = ClientThread(current_user["username"])
         self.client_thread.message_received.connect(self.handle_received_message)
         self.client_thread.start()
@@ -342,9 +342,9 @@ class MainWindow(BaseWindow):
         user_profile_layout.addWidget(user_name_label)
         user_profile_layout.addStretch()
 
-        symbol_font = QFont("Segoe UI Symbol", 12)  # برای ویندوز
+        symbol_font = QFont("Segoe UI Symbol", 12)  
         # یا
-        symbol_font = QFont("Arial Unicode MS", 12)  # گزینه جایگزین
+        symbol_font = QFont("Arial Unicode MS", 12)  
 
         settings_button = QPushButton("⚙")  # نماد چرخ دنده
         settings_button.setFont(symbol_font)
@@ -506,23 +506,23 @@ class MainWindow(BaseWindow):
         settings_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         settings_layout.addWidget(settings_title)
 
-        # Username
+        
         settings_layout.addWidget(QLabel("نام کاربری جدید:"))
         self.settings_username_input = QLineEdit(self.current_user['username'])
         settings_layout.addWidget(self.settings_username_input)
 
-        # Phone Number
+        
         settings_layout.addWidget(QLabel("شماره تلفن جدید:"))
         self.settings_phone_input = QLineEdit(self.current_user['phone'])
         settings_layout.addWidget(self.settings_phone_input)
 
-        # New Password
+        
         settings_layout.addWidget(QLabel("رمز عبور جدید:"))
         self.settings_new_password_input = QLineEdit()
         self.settings_new_password_input.setEchoMode(QLineEdit.EchoMode.Password)
         settings_layout.addWidget(self.settings_new_password_input)
 
-        # Confirm New Password
+        
         settings_layout.addWidget(QLabel("تایید رمز عبور جدید:"))
         self.settings_confirm_new_password_input = QLineEdit()
         self.settings_confirm_new_password_input.setEchoMode(QLineEdit.EchoMode.Password)
@@ -547,7 +547,7 @@ class MainWindow(BaseWindow):
             if not pixmap.isNull():
                 scaled_pixmap = pixmap.scaled(50, 50, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
                 
-                # Create a circular pixmap
+                
                 circle_pixmap = QPixmap(50, 50)
                 circle_pixmap.fill(Qt.GlobalColor.transparent)
                 painter = QPainter(circle_pixmap)
@@ -570,7 +570,7 @@ class MainWindow(BaseWindow):
             if not pixmap.isNull():
                 scaled_pixmap = pixmap.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
                 
-                # Create a circular pixmap
+                
                 circle_pixmap = QPixmap(120, 120)
                 circle_pixmap.fill(Qt.GlobalColor.transparent)
                 painter = QPainter(circle_pixmap)
@@ -658,13 +658,13 @@ class MainWindow(BaseWindow):
 
 
     def load_contacts(self):
-        # پاک کردن لیست مخاطبان فعلی
+        
         for i in reversed(range(self.contacts_list_layout.count())):
             widget_to_remove = self.contacts_list_layout.itemAt(i).widget()
             if widget_to_remove:
                 widget_to_remove.setParent(None)
 
-        # دریافت لیست مخاطبان از دیتابیس (بر اساس پیام‌های ارسال شده یا دریافت شده)
+
         contacts = []
         try:
             # دریافت تمام کاربرانی که با کاربر جاری چت داشته‌اند
@@ -709,7 +709,7 @@ class MainWindow(BaseWindow):
         contact_pic_label.setStyleSheet("border-radius: 20px; background-color: #bd93f9;")
         contact_pic_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        # Load contact's profile picture
+        # profile
         if contact_data.get('profile_pic_path') and os.path.exists(contact_data['profile_pic_path']):
             pixmap = QPixmap(contact_data['profile_pic_path'])
             if not pixmap.isNull():
@@ -750,7 +750,6 @@ class MainWindow(BaseWindow):
             self.show_message("لطفاً هم نام کاربری و هم شماره تلفن مخاطب را وارد کنید.")
             return
 
-        # بررسی اینکه شماره تلفن مربوط به همان نام کاربری است
         contact_info = self.db_manager.get_user_info(username=username)
 
         if not contact_info:
@@ -765,7 +764,6 @@ class MainWindow(BaseWindow):
             self.show_message("نمی‌توانید خودتان را به عنوان مخاطب اضافه کنید.")
             return
 
-        # بررسی اینکه مخاطب تکراری نباشد
         for i in range(self.contacts_list_layout.count()):
             item_widget = self.contacts_list_layout.itemAt(i).widget()
             if item_widget and hasattr(item_widget, 'contact_data') and item_widget.contact_data['id'] == contact_info['id']:
@@ -846,7 +844,7 @@ class MainWindow(BaseWindow):
     def display_message(self, message_text, is_sender, timestamp):
         message_id = f"{message_text}-{timestamp}"
         if message_id in self.displayed_message_ids:
-            return  # پیام تکراری است
+            return  
 
         self.displayed_message_ids.add(message_id)
         message_bubble = QLabel(message_text)
@@ -893,26 +891,8 @@ class MainWindow(BaseWindow):
 
 
     def handle_received_message(self, message_data):
-        # ذخیره پیام در دیتابیس (فقط یک بار)
-        sender_info = self.db_manager.get_user_info(username=message_data['sender'])
-        receiver_info = self.db_manager.get_user_info(username=message_data['receiver'])
-        
-        if sender_info and receiver_info:
-            # بررسی وجود پیام در دیتابیس قبل از ذخیره
-            if not self.db_manager.message_exists(
-                sender_info['id'],
-                receiver_info['id'],
-                message_data['message'],
-                message_data['timestamp']
-            ):
-                self.db_manager.save_message(
-                    sender_info['id'],
-                    receiver_info['id'],
-                    message_data['message'],
-                    message_data['timestamp']
-                )
 
-        # فقط اگر در چت مربوطه هستیم پیام را نمایش دهیم
+
         if (self.current_chat_partner and 
             ((message_data['sender'] == self.current_chat_partner['username'] and 
             message_data['receiver'] == self.current_user['username']) or
@@ -927,7 +907,7 @@ class MainWindow(BaseWindow):
         if not message_text or not self.current_chat_partner:
             return
         
-        # حذف پیام "هنوز پیامی وجود ندارد" اگر نمایش داده می‌شود
+
         if self.no_messages_label:
             self.no_messages_label.deleteLater()
             self.no_messages_label = None
@@ -935,20 +915,20 @@ class MainWindow(BaseWindow):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.message_input.clear()
         
-        # ارسال پیام به سرور
+
         self.client_thread.send_message(message_text, self.current_chat_partner['username'])
         
 
 
     def closeEvent(self, event):
-        # توقف کلاینت هنگام بسته شدن پنجره
+
         self.client_thread.stop_client()
         event.accept()
 
 class MessengerApp(QApplication):
     def __init__(self, sys_argv):
         super().__init__(sys_argv)
-        self.db_manager = DatabaseManager()  # Initialize database manager
+        self.db_manager = DatabaseManager() 
         self.setup_ui()
 
     def setup_ui(self):
@@ -962,25 +942,25 @@ class MessengerApp(QApplication):
         self.stacked_widget.addWidget(self.sign_in_window)
         self.stacked_widget.addWidget(self.sign_up_window)
 
-        # Connect the signal to the slot
+        
         self.sign_in_window.signed_in.connect(self.show_main_window)
 
         self.stacked_widget.show()
     def show_main_window(self, user_data):
-        # اگر ویجت اصلی از قبل وجود دارد، آن را پاک کنید
+        
         if hasattr(self, 'main_window'):
             self.main_window.deleteLater()
 
-        # ایجاد ویجت اصلی جدید
+        
         self.main_window = MainWindow(self.stacked_widget, self.db_manager, user_data)
         
-        # افزودن ویجت به QStackedWidget و نمایش آن
+        
         self.stacked_widget.addWidget(self.main_window)
         self.stacked_widget.setCurrentWidget(self.main_window)
         
-        # تنظیم اندازه پنجره برای صفحه اصلی
+        
         self.stacked_widget.setMinimumSize(900, 600)
-        self.stacked_widget.resize(900, 600)  # تنظیم اندازه اولیه
+        self.stacked_widget.resize(900, 600)  
     def shutdown(self):
         self.db_manager.close()
         print("Application shutting down. Database connection closed.")

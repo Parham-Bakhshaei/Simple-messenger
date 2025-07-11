@@ -51,10 +51,8 @@ class Server:
             return False
 
     def broadcast(self, sender, receiver, message):
-        # Save to database first
         self.save_message(sender, receiver, message)
-        
-        # Prepare message data
+
         message_data = {
             'type': 'message',
             'sender': sender,
@@ -63,7 +61,6 @@ class Server:
             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
-        # Add to queue for processing
         self.message_queue.put(message_data)
 
     def process_message_queue(self):

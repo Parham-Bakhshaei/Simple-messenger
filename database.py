@@ -53,14 +53,6 @@ class DatabaseManager:
         except sqlite3.Error as e:
             print(f"Error creating tables: {e}")
 
-    def message_exists(self, sender_id, receiver_id, message_text, timestamp):
-        self.cursor.execute("""
-            SELECT 1 FROM messages 
-            WHERE sender_id = ? AND receiver_id = ? 
-            AND message_text = ? AND timestamp = ?
-        """, (sender_id, receiver_id, message_text, timestamp))
-        return self.cursor.fetchone() is not None
-
 
     def register_user(self, username, password, phone):
         try:
@@ -114,10 +106,6 @@ class DatabaseManager:
             return None
 
     def update_user_info(self, user_id, new_username=None, new_password=None, new_phone=None, new_profile_pic_path=None):
-        """
-        Updates user information.
-        Returns True on success, False if new username/phone already exists or on other errors.
-        """
         try:
             update_fields = []
             params = []
