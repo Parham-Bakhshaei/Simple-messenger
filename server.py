@@ -13,15 +13,15 @@ class Server:
         self.server.bind((self.host, self.port))
         self.server.listen()
         
-        self.clients = {}  # {username: {'socket': socket, 'address': address}}
+        self.clients = {}  
         self.message_queue = Queue()
         
         self.db_conn = sqlite3.connect('messenger.db', check_same_thread=False)
         self.init_db()
         
-        print(f"سرور در حال اجرا روی {self.host}:{self.port}...")
+        print(f" Server running {self.host}:{self.port}...")
         
-        # Start queue processing thread
+        
         threading.Thread(target=self.process_message_queue, daemon=True).start()
 
     def init_db(self):
@@ -47,7 +47,7 @@ class Server:
             self.db_conn.commit()
             return True
         except Exception as e:
-            print(f"خطا در ذخیره پیام: {e}")
+            print(f"{e}")
             return False
 
     def broadcast(self, sender, receiver, message):
@@ -70,7 +70,7 @@ class Server:
         while True:
             message_data = self.message_queue.get()
             
-            # Send to receiver if online
+            #online
             if message_data['receiver'] in self.clients:
                 receiver_socket = self.clients[message_data['receiver']]['socket']
                 try:
@@ -78,7 +78,7 @@ class Server:
                 except:
                     print(f"ارسال پیام به {message_data['receiver']} ناموفق بود")
             
-            # Also send back to sender for their own display
+            #  own display
             if message_data['sender'] in self.clients:
                 sender_socket = self.clients[message_data['sender']]['socket']
                 try:
@@ -102,9 +102,8 @@ class Server:
                     if message['type'] == 'login':
                         username = message['username']
                         self.clients[username] = {'socket': client_socket, 'address': address}
-                        print(f"{username} متصل شد")
+                        print(f"{username} Connected!")
                         
-                        # Send login success
                         response = {'type': 'login_success', 'message': 'با موفقیت وارد شدید'}
                         client_socket.send(json.dumps(response).encode('utf-8'))
                         
@@ -113,14 +112,14 @@ class Server:
                             self.broadcast(username, message['receiver'], message['message'])
                     
                 except json.JSONDecodeError:
-                    print("پیام نامعتبر دریافت شد")
+                    print("Bad request")
                     
         except ConnectionResetError:
-            print("ارتباط با کلاینت قطع شد")
+            print("Error")
         finally:
             if username and username in self.clients:
                 del self.clients[username]
-                print(f"{username} قطع شد")
+                print(f"{username} disconnected!")
             client_socket.close()
 
     def run(self):
@@ -130,7 +129,7 @@ class Server:
                 thread = threading.Thread(target=self.handle_client, args=(client_socket, address))
                 thread.start()
         except KeyboardInterrupt:
-            print("در حال خاموش کردن سرور...")
+            print("Server is off")
             self.server.close()
             self.db_conn.close()
 

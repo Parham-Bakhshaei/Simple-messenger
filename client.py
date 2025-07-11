@@ -3,7 +3,7 @@ import json
 from PyQt6.QtCore import QThread, pyqtSignal
 
 class ClientThread(QThread):
-    message_received = pyqtSignal(dict)  # Signal to emit received messages
+    message_received = pyqtSignal(dict)  
     
     def __init__(self, username):
         super().__init__()
@@ -17,7 +17,7 @@ class ClientThread(QThread):
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client_socket.connect(('localhost', 5555))
             
-            # Send login message
+
             login_message = {
                 'type': 'login',
                 'username': self.username
@@ -35,14 +35,14 @@ class ClientThread(QThread):
                         if message['type'] == 'message':
                             self.message_received.emit(message)
                     except json.JSONDecodeError:
-                        print("پیام نامعتبر از سرور دریافت شد")
+                        print("Bad request")
                         
                 except ConnectionResetError:
-                    print("ارتباط با سرور قطع شد")
+                    print("Disconnected")
                     break
                 
         except Exception as e:
-            print(f"خطا در اتصال به سرور: {e}")
+            print(f"Error {e}")
         finally:
             if self.client_socket:
                 self.client_socket.close()
@@ -54,10 +54,8 @@ class ClientThread(QThread):
                 'receiver': receiver,
                 'message': message_text
             }
-            try:
-                self.client_socket.send(json.dumps(message).encode('utf-8'))
-            except Exception as e:
-                print(f"خطا در ارسال پیام: {e}")
+            self.client_socket.send(json.dumps(message).encode('utf-8'))
+
     
     def stop_client(self):
         self.running = False
